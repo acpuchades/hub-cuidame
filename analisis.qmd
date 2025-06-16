@@ -42,5 +42,17 @@ tab_model(hfmse.fit, dv.labels = "HFMSE [/66]")
 ```
 
 ```{r}
+ggeffect(hfmse.fit, c("age", "txgroup")) |> plot() +
+  scale_x_continuous(limits=c(18, 75), breaks=seq(20, 75, 10)) +
+  labs(x = "Age", y = "HFMSE [/66]", color = "Treatment")
+```
+
+```{r}
 tab_model(rulm.fit, dv.labels = "RULM [/37]")
+```
+
+```{r}
+ggeffect(rulm.fit, c("age", "txgroup")) |> plot() +
+  scale_x_continuous(limits=c(18, 75), breaks=seq(20, 75, 10)) +
+  labs(x = "Age", y = "RULM [/37]", color = "Treatment")
 ```

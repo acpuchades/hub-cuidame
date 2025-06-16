@@ -27,17 +27,13 @@
 			rstudio-with-packages = pkgs.rstudioWrapper.override { packages = r-packages; };
 			render-cmd = pkgs.writeShellApplication {
 				name = "render";
-				runtimeInputs = [ pkgs.ffmpeg pkgs.quarto pkgs.pandoc pkgs.texliveFull r-with-packages ];
-				text = ''
-					${r-with-packages}/bin/Rscript -e "quarto::quarto_render('analisis.qmd')"
-				'';
+				runtimeInputs = [ pkgs.quarto pkgs.pandoc pkgs.texliveFull r-with-packages ];
+				text = "${r-with-packages}/bin/Rscript -e \"quarto::quarto_render('analisis.qmd')\"";
 			};
 			rstudio-cmd = pkgs.writeShellApplication {
 				name = "rstudio";
-				runtimeInputs = [ pkgs.ffmpeg pkgs.quarto rstudio-with-packages ];
-				text = ''
-					${rstudio-with-packages}/bin/rstudio ./analisis.qmd
-				'';
+				runtimeInputs = [ pkgs.quarto rstudio-with-packages ];
+				text = "${rstudio-with-packages}/bin/rstudio ./analisis.qmd";
 			};
 		in {
 			devShells.default = pkgs.mkShell {
