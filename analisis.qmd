@@ -1,0 +1,40 @@
+---
+title: "analisis"
+format: html
+---
+
+```{r}
+library(sjPlot)
+library(ggplot2)
+library(ggeffects)
+library(tidyverse)
+```
+
+```{r}
+source("R/data.R")
+source("R/lmm_rulm.R")
+```
+
+```{r}
+datos_escalas |>
+  mutate(scale = factor(scale, levels = c(
+    "HFMSE", "RULM", "ALSFRS_R", "EK2", "WALK_TEST", "CHOP"
+  ))) |>
+  ggplot(aes(age, score, color=smn2num, group=patient_id)) +
+  geom_line() + 
+  facet_wrap(~ scale, scales="free")
+```
+
+```{r}
+datos_escalas |>
+  mutate(scale = factor(scale, levels = c(
+    "HFMSE", "RULM", "ALSFRS_R", "EK2", "WALK_TEST", "CHOP"
+  ))) |>
+  ggplot(aes(age, score, color=txgroup, group=patient_id)) +
+  geom_line() + 
+  facet_wrap(~ scale, scales="free")
+```
+
+```{r}
+tab_model(rulm.fit, dv.labels = "RULM [/37]")
+```
