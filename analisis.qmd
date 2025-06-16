@@ -12,6 +12,7 @@ library(tidyverse)
 
 ```{r}
 source("R/data.R")
+source("R/lmm_hfmse.R")
 source("R/lmm_rulm.R")
 ```
 
@@ -33,6 +34,11 @@ datos_escalas |>
   ggplot(aes(age, score, color=txgroup, group=patient_id)) +
   geom_line() + 
   facet_wrap(~ scale, scales="free")
+```
+
+
+```{r}
+tab_model(hfmse.fit, dv.labels = "HFMSE [/66]")
 ```
 
 ```{r}
