@@ -12,15 +12,15 @@ hfmse.data <- datos_escalas |>
   drop_na()
 
 hfmse.fit0 <- lme(
-  score ~ gender + smn2num + sma_type + txgroup + treatment_start_age + age +
-    treatment_start_age:age + txgroup:age,
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
   random = ~ 1 | patient_id,
   data = hfmse.data
 )
 
+summary(hfmse.fit0)
+
 hfmse.fit1 <- lme(
-  score ~ gender + smn2num + sma_type + txgroup + treatment_start_age + age +
-    treatment_start_age:age + txgroup:age,
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
   random = ~ age | patient_id,
   data = hfmse.data
 )
@@ -28,37 +28,63 @@ hfmse.fit1 <- lme(
 anova(hfmse.fit0, hfmse.fit1)
 
 hfmse.fit2 <- lme(
-  score ~ gender + smn2num + sma_type + txgroup + treatment_start_age + age +
-    treatment_start_age:age + txgroup:age,
-  random = ~ age | ccaa/patient_id,
-  data = hfmse.data,
-  control = lmeControl(opt="optim", maxIter=1e3, msMaxIter=1e3)
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varIdent(form=~1 | sma_type),
+  data = hfmse.data
 )
 
 anova(hfmse.fit1, hfmse.fit2)
 
 hfmse.fit3 <- lme(
-  score ~ gender + smn2num + sma_type + txgroup + treatment_start_age + age +
-    treatment_start_age:age + txgroup:age,
-  random = ~age | ccaa/patient_id,
-  weights = varIdent(form=~1 | txgroup),
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varComb(
+    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | gender)
+  ),
   data = hfmse.data
 )
 
 anova(hfmse.fit2, hfmse.fit3)
 
 hfmse.fit4 <- lme(
-  score ~ gender + smn2num + sma_type + txgroup + treatment_start_age + age +
-    treatment_start_age:age + txgroup:age,
-  random = ~age | ccaa/patient_id,
-  weights = varIdent(form=~1 | txgroup),
-  correlation = corCAR1(form=~years_from_baseline | ccaa/patient_id),
-  data = hfmse.data,
-  control = lmeControl(opt="optim")
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varComb(
+    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | smn2num)
+  ),
+  data = hfmse.data
 )
 
-anova(hfmse.fit3, hfmse.fit4)
+anova(hfmse.fit2, hfmse.fit4)
 
-hfmse.fit <- hfmse.fit4
+hfmse.fit5 <- lme(
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varComb(
+    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | txgroup)
+  ),
+  data = hfmse.data
+)
+
+anova(hfmse.fit2, hfmse.fit5)
+
+hfmse.fit6 <- lme(
+  score ~ (gender + smn2num + sma_type + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varComb(
+    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | txgroup)
+  ),
+  correlation = corCAR1(form=~years_from_baseline | patient_id),
+  data = hfmse.data
+)
+
+anova(hfmse.fit5, hfmse.fit6)
+
+hfmse.fit <- hfmse.fit6
 
 summary(hfmse.fit)
