@@ -11,17 +11,19 @@
 		let
 			pkgs = import nixpkgs { inherit system; };
 			r-packages = with pkgs.rPackages; [
-				tidyverse
-				nlme
-				mgcv
-				sjPlot
+				cardx
+				dunn_test
 				effects
 				emmeans
-				ggeffects
-				gtsummary
 				gt
-				janitor
+				ggeffects
+				ggpubr
+				gtsummary
+				nlme
 				readxl
+				sjPlot
+				tidyverse
+				janitor
 			];
 			r-with-packages = pkgs.rWrapper.override { packages = r-packages; };
 			rstudio-with-packages = pkgs.rstudioWrapper.override { packages = r-packages; };
@@ -32,7 +34,7 @@
 			};
 			rstudio-cmd = pkgs.writeShellApplication {
 				name = "rstudio";
-				runtimeInputs = [ pkgs.quarto rstudio-with-packages ];
+				runtimeInputs = [ pkgs.quarto pkgs.pandoc rstudio-with-packages ];
 				text = "${rstudio-with-packages}/bin/rstudio ./analisis.qmd";
 			};
 		in {

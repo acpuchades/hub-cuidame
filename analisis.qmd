@@ -1,12 +1,25 @@
 ---
-title: "analisis"
-format: html
+title: "Análisis datos CuidAME"
+author:
+  - name: "Alejandro Caravaca Puchades"
+    orcid: 0000-0003-2223-7335
+    email: "acaravaca@idibell.cat"
+    affiliation: "Hospital Universitari de Bellvitge -- IDIBELL"
+format:
+  html:
+    df-print: paged
+    embed-resources: true
+execute:
+  warning: false
 ---
 
 ```{r}
-library(sjPlot)
-library(ggplot2)
+library(dunn.test)
 library(ggeffects)
+library(ggplot2)
+library(ggpubr)
+library(gtsummary)
+library(sjPlot)
 library(tidyverse)
 ```
 
@@ -14,6 +27,28 @@ library(tidyverse)
 source("R/data.R")
 source("R/lmm_hfmse.R")
 source("R/lmm_rulm.R")
+```
+
+# Diferencias entre tratamientos
+
+```{r}
+pacientes |>
+  mutate(
+    gender = case_match(gender,
+        "M" ~ "Male",
+        "F" ~ "Female"
+      ) |>
+      factor(levels = c("Female", "Male")),
+    treatment = case_match(txgroup,
+        "NO TREATED" ~ "No treatment",
+        "NUS" ~ "Nusinersen",
+        "RIS" ~ "Risdiplam"
+      ) |>
+      factor(levels = c("No treatment", "Nusinersen", "Risdiplam"))
+  ) |>
+  select(gender, age, sma_type, smn2num, treatment) |>
+  tbl_summary(by="treatment") |>
+  add_p()
 ```
 
 ```{r}
@@ -36,7 +71,6 @@ datos_escalas |>
   facet_wrap(~ scale, scales="free")
 ```
 
-
 ```{r}
 tab_model(hfmse.fit, dv.labels = "HFMSE [/66]")
 ```
@@ -48,6 +82,12 @@ ggeffect(hfmse.fit, c("age", "txgroup", "sma_type")) |> plot() +
 ```
 
 ```{r}
+ggeffect(hfmse.fit, c("age", "treatment_start_age", "txgroup")) |> plot() +
+  scale_x_continuous(limits=c(18, 75), breaks=seq(20, 75, 10)) +
+  labs(x = "Age", y = "HFMSE [/66]", color = "Treatment start")
+```
+
+```{r}
 tab_model(rulm.fit, dv.labels = "RULM [/37]")
 ```
 
@@ -55,4 +95,90 @@ tab_model(rulm.fit, dv.labels = "RULM [/37]")
 ggeffect(rulm.fit, c("age", "txgroup", "sma_type")) |> plot() +
   scale_x_continuous(limits=c(18, 75), breaks=seq(20, 75, 10)) +
   labs(x = "Age", y = "RULM [/37]", color = "Treatment")
+```
+
+```{r}
+ggeffect(rulm.fit, c("age", "treatment_start_age", "txgroup")) |> plot() +
+  scale_x_continuous(limits=c(18, 75), breaks=seq(20, 75, 10)) +
+  labs(x = "Age", y = "RULM [/37]", color = "Treatment start")
+```
+
+
+# Diferencias en inicio de tratamiento entre CC.AA.
+
+
+```{r}
+with(pacientes_ccaa, table(ccaa, sma_type))
+```
+
+```{r}
+with(pacientes_ccaa, table(ccaa, treated))
+```
+
+```{r}
+fisher.test(with(pacientes_ccaa, table(ccaa, treated)))
+```
+
+```{r}
+with(pacientes_ccaa, table(ccaa, txgroup, sma_type))
+```
+
+```{r}
+pacientes_ccaa.sma2 <- filter(pacientes_ccaa, sma_type == "SMA-II")
+pacientes_ccaa.sma3 <- filter(pacientes_ccaa, sma_type == "SMA-III")
+```
+
+```{r}
+pacientes_ccaa |>
+  drop_na(sma_type) |>
+  ggline(x="ccaa", y="treatment_start_age", color="sma_type", add="mean_se") +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+```{r}
+pacientes_ccaa |>
+  drop_na(ccaa, sma_type, birth_d) |>
+  ggplot(aes(year(birth_d), ccaa)) +
+    geom_boxplot() +
+    facet_wrap(~sma_type)
+```
+
+```{r}
+aov(treatment_start_age ~ ccaa, pacientes_ccaa.sma2) |> plot()
+```
+
+```{r}
+kruskal.test(treatment_start_age ~ ccaa, pacientes_ccaa.sma2)
+```
+
+```{r}
+with(pacientes_ccaa.sma2, dunn.test(treatment_start_age, ccaa, method = "BH"))
+```
+
+```{r}
+ggplot(pacientes_ccaa.sma2, aes(ccaa, year(birth_d))) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  labs(title = "Differences in patient inclusion among different CC.AA.",
+       x = "CC.AA.", y = "Birth Year")
+```
+
+```{r}
+aov(year(birth_d) ~ ccaa, pacientes_ccaa.sma2) |> plot()
+```
+
+```{r}
+kruskal.test(year(birth_d) ~ ccaa, pacientes_ccaa.sma2)
+```
+
+```{r}
+with(pacientes_ccaa.sma2, dunn.test(year(birth_d), ccaa, method = "BH"))
+```
+
+```{r}
+aov(treatment_start_age ~ ccaa, data = pacientes_ccaa.sma3) |> plot()
+```
+
+```{r}
+oneway.test(treatment_start_age ~ ccaa, pacientes_ccaa.sma3)
 ```
