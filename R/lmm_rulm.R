@@ -39,7 +39,7 @@ anova(rulm.fit1, rulm.fit2)
 rulm.fit3 <- lme(
   score ~ (sma_type + gender + smn2num + txgroup + treatment_start_age) * age,
   random = ~age | patient_id,
-  weights = varIdent(form=~1 | sma_type),
+  weights = varIdent(form=~1 | ccaa),
   data = rulm.data
 )
 
@@ -49,10 +49,11 @@ rulm.fit4 <- lme(
   score ~ (sma_type + gender + smn2num + txgroup + treatment_start_age) * age,
   random = ~age | patient_id,
   weights = varComb(
-    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | ccaa),
     varIdent(form=~1 | gender)
   ),
-  data = rulm.data
+  data = rulm.data,
+  control = lmeControl(maxIter=1e3, msMaxIter=1e3)
 )
 
 anova(rulm.fit3, rulm.fit4)
@@ -61,11 +62,12 @@ rulm.fit5 <- lme(
   score ~ (sma_type + gender + smn2num + txgroup + treatment_start_age) * age,
   random = ~age | patient_id,
   weights = varComb(
-    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | ccaa),
     varIdent(form=~1 | gender),
-    varIdent(form=~1 | txgroup)
+    varIdent(form=~1 | sma_type)
   ),
-  data = rulm.data
+  data = rulm.data,
+  control = lmeControl(maxIter=1e3, msMaxIter=1e3)
 )
 
 anova(rulm.fit4, rulm.fit5)
@@ -74,15 +76,46 @@ rulm.fit6 <- lme(
   score ~ (sma_type + gender + smn2num + txgroup + treatment_start_age) * age,
   random = ~age | patient_id,
   weights = varComb(
-    varIdent(form=~1 | sma_type),
+    varIdent(form=~1 | ccaa),
     varIdent(form=~1 | gender),
+    varIdent(form=~1 | smn2num)
+  ),
+  data = rulm.data,
+  control = lmeControl(maxIter=1e3, msMaxIter=1e3)
+)
+
+anova(rulm.fit4, rulm.fit6)
+
+rulm.fit7 <- lme(
+  score ~ (sma_type + gender + smn2num + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varComb(
+    varIdent(form=~1 | ccaa),
+    varIdent(form=~1 | gender),
+    varIdent(form=~1 | smn2num),
+    varIdent(form=~1 | txgroup)
+  ),
+  data = rulm.data,
+  control = lmeControl(maxIter=1e3, msMaxIter=1e3)
+)
+
+anova(rulm.fit6, rulm.fit7)
+
+rulm.fit8 <- lme(
+  score ~ (sma_type + gender + smn2num + txgroup + treatment_start_age) * age,
+  random = ~age | patient_id,
+  weights = varComb(
+    varIdent(form=~1 | ccaa),
+    varIdent(form=~1 | gender),
+    varIdent(form=~1 | smn2num),
     varIdent(form=~1 | txgroup)
   ),
   correlation = corCAR1(form=~years_from_baseline | patient_id),
-  data = rulm.data
+  data = rulm.data,
+  control = lmeControl(maxIter=1e3, msMaxIter=1e3)
 )
 
-anova(rulm.fit5, rulm.fit6)
+anova(rulm.fit7, rulm.fit8)
 
-rulm.fit <- rulm.fit6
+rulm.fit <- rulm.fit8
 summary(rulm.fit)

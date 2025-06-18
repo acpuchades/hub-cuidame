@@ -36,7 +36,7 @@ as_smn2_copy_number <- function(x) {
     factor(levels=c("1", "2", "3", "4", ">4"))
 }
 
-as_treatment_group <- function(x) factor(x, levels = c("NUS", "NO TREATED", "RIS"))
+as_treatment_group <- function(x) factor(x, levels = c("NO TREATED", "NUS", "RIS"))
 
 datos_ccaa <- read_xlsx(data_path, sheet="CCAA") |>
   clean_names() |>
@@ -68,9 +68,17 @@ pacientes <- datos_pacientes |>
     across(gender, as_gender),
     across(sma_type, as_sma_type),
     across(smn2num, as_smn2_copy_number),
-    treatment_start_age = floor((treatment_start_d - birth_d) / dyears(1)),
+    treated = tx_classification != "NO TREATED",
+    age = coalesce(
+      floor((death_d - birth_d) / dyears(1)),
+      floor((now() - birth_d) / dyears(1)),
+    ),
     txgroup = as_treatment_group(tx_classification),
+    treatment_start_age = floor((treatment_start_d - birth_d) / dyears(1)),
   )
+
+pacientes_ccaa <- pacientes |>
+  mutate(ccaa = factor(ccaa) |> fct_lump_min(10))
 
 datos_escalas <- datos_escalas |>
   left_join(
