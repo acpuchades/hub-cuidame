@@ -11,8 +11,10 @@ library(ggplot2)
 data_path <- "data/20250321_POVEDANO.xlsx"
 
 as_gender <- function(x) factor(x, levels=c("F", "M"))
+as_sma_type <- function(x) factor(x, levels = c("SMA-II", "SMA-III"))
+as_smn2_copy_number <- function(x) factor(x, levels = c(as.character(1:4), ">4"))
 
-as_sma_type <- function(x) {
+parse_sma_type <- function(x) {
   x |>
     case_match(
       "sma_type/type1" ~ "SMA-I",
@@ -20,10 +22,10 @@ as_sma_type <- function(x) {
       "sma_type/type3" ~ "SMA-III",
       "sma_type/type4" ~ "SMA-IV",
     ) |>
-    factor(levels = c("SMA-II", "SMA-III"))
+    as_sma_type()
 }
 
-as_smn2_copy_number <- function(x) {
+parse_smn2_copy_number <- function(x) {
   x |>
     case_match(
       "smn2_copy_number/1" ~ "1",
@@ -33,7 +35,7 @@ as_smn2_copy_number <- function(x) {
       "smn2_copy_number/>4" ~ ">4",
       "smn2_copy_number/uknown" ~ NA,
     ) |>
-    factor(levels=c("1", "2", "3", "4", ">4"))
+    as_smn2_copy_number()
 }
 
 as_treatment_group <- function(x) factor(x, levels = c("NO TREATED", "NUS", "RIS"))
@@ -66,8 +68,8 @@ pacientes <- datos_pacientes |>
   left_join(datos_ccaa, by = "patient_id") |>
   mutate(
     across(gender, as_gender),
-    across(sma_type, as_sma_type),
-    across(smn2num, as_smn2_copy_number),
+    across(sma_type, parse_sma_type),
+    across(smn2num, parse_smn2_copy_number),
     treated = tx_classification != "NO TREATED",
     age = coalesce(
       floor((death_d - birth_d) / dyears(1)),

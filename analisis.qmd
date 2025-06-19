@@ -103,9 +103,96 @@ ggeffect(rulm.fit, c("age", "treatment_start_age", "txgroup")) |> plot() +
   labs(x = "Age", y = "RULM [/37]", color = "Treatment start")
 ```
 
+# Análisis de coste-efectividad
+
+```{r}
+compare_treatments <- function(model, treatment.a, treatment.b, duration_years,
+                               treatment_start_age=20, sma_type="SMA-II", gender="M", smn2num="3")
+{
+  common_traits = data.frame(patient_id="dummy", sma_type=sma_type, gender=gender, smn2num=smn2num,
+                             treatment_start_age=treatment_start_age)
+  a_start = predict(model, level=0, newdata=cbind(common_traits, data.frame(
+    txgroup=treatment.a, age=treatment_start_age, years_from_baseline=0
+  )))
+  a_end = predict(model, level=0, newdata=cbind(common_traits, data.frame(
+    txgroup=treatment.a, age=treatment_start_age+duration_years, years_from_baseline=duration_years
+  )))
+  
+  b_start = predict(model, level=0, newdata=cbind(common_traits, data.frame(
+    txgroup=treatment.b, age=treatment_start_age, years_from_baseline=0
+  )))
+  b_end = predict(model, level=0, newdata=cbind(common_traits, data.frame(
+    txgroup=treatment.b, age=treatment_start_age+duration_years, years_from_baseline=duration_years
+  )))
+  
+  return(as.numeric((a_end - a_start) - (b_end - b_start)))
+}
+
+calculate_treatment_icer <- function(model, treatment.a, treatment.b, duration_years,
+                                     treatment.a.cost.first, treatment.a.cost.after,
+                                     treatment.b.cost.first, treatment.b.cost.after)
+{
+  df <- data.frame(treatment.a=treatment.a, treatment.b=treatment.b) |>
+    cross_join(data.frame(t=duration_years)) |>
+    mutate(
+      cost.a = treatment.a.cost.first + treatment.a.cost.after * (t-1),
+      cost.b = treatment.b.cost.first + treatment.b.cost.after * (t-1),
+      cost.a_vs_b = cost.a - cost.b,
+      efficacy.a_vs_b = compare_treatments(model, treatment.a, treatment.b, t),
+      icer.a_vs_b = cost.a_vs_b / efficacy.a_vs_b
+    )
+  return(df)
+}
+
+rulm_icer.nus_vs_ris <- calculate_treatment_icer(
+  rulm.fit, treatment.a="NUS", treatment.b="RIS", duration_years=1:10,
+  treatment.a.cost.first=420000, treatment.a.cost.after=210000,
+  treatment.b.cost.first=251996, treatment.b.cost.after=251996
+)
+
+hfmse_icer.nus_vs_ris <- calculate_treatment_icer(
+  hfmse.fit, treatment.a="NUS", treatment.b="RIS", duration_years=1:10,
+  treatment.a.cost.first=420000, treatment.a.cost.after=210000,
+  treatment.b.cost.first=251996, treatment.b.cost.after=251996
+)
+
+icer.nus_vs_ris <- bind_rows(
+  rulm_icer.nus_vs_ris |> mutate(scale="RULM"),
+  hfmse_icer.nus_vs_ris |> mutate(scale="HFMSE")
+)
+```
+
+```{r}
+icer.nus_vs_ris |>
+  filter(scale == "RULM") |>
+  mutate(cost_interpretation = case_when(
+    cost.a_vs_b > 0 ~ str_glue("Favours {treatment.b}"),
+    cost.a_vs_b < 0 ~ str_glue("Favours {treatment.a}"),
+  ) |> factor(levels=c("Favours RIS", "Favours NUS"))) |>
+  ggplot(aes(t, cost.a_vs_b)) +
+  geom_col(aes(fill=cost_interpretation)) +
+  scale_x_continuous(breaks=seq(2, 10, 2)) +
+  scale_y_continuous(labels=scales::dollar_format(prefix="", suffix="€")) +
+  labs(
+    fill="Cost Analysis",
+    x = "Treatment duration (years)", y = "Cost difference: NUS - RIS",
+  ) +
+  theme(legend.position = "top")
+```
+
+```{r}
+ggplot(icer.nus_vs_ris, aes(t, icer.a_vs_b)) +
+  geom_line() + geom_point() +
+  facet_wrap(~scale, ncol=1) +
+  scale_x_continuous(breaks=seq(2, 10, 2)) +
+  scale_y_continuous(labels=scales::dollar_format(prefix="", suffix="€")) +
+  labs(
+    title = "Cost Effectiveness Analysis: NUS vs. RIS",
+    x = "Treatment duration (years)", y = "ICER"
+  )
+```
 
 # Diferencias en inicio de tratamiento entre CC.AA.
-
 
 ```{r}
 with(pacientes_ccaa, table(ccaa, sma_type))
@@ -152,7 +239,8 @@ kruskal.test(treatment_start_age ~ ccaa, pacientes_ccaa.sma2)
 ```
 
 ```{r}
-with(pacientes_ccaa.sma2, dunn.test(treatment_start_age, ccaa, method = "BH"))
+with(pacientes_ccaa.sma2,
+     dunn.test(treatment_start_age, ccaa, method = "bonferroni"))
 ```
 
 ```{r}
@@ -172,7 +260,8 @@ kruskal.test(year(birth_d) ~ ccaa, pacientes_ccaa.sma2)
 ```
 
 ```{r}
-with(pacientes_ccaa.sma2, dunn.test(year(birth_d), ccaa, method = "BH"))
+with(pacientes_ccaa.sma2,
+     dunn.test(year(birth_d), ccaa, method = "bonferroni"))
 ```
 
 ```{r}
